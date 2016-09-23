@@ -1,1 +1,1 @@
-# tru-pogoapi
+# tru-pokemongo-api
