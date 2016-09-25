@@ -29,6 +29,9 @@ const ResponseEnvelope = Envelopes.ResponseEnvelope;
 const RequestMessages = POGOProtos.Networking.Requests.Messages;
 const Responses = POGOProtos.Networking.Responses;
 
+var _username;
+var _password;
+
 function PokemonGoAPI() {
 	var self = this;
 
@@ -42,7 +45,7 @@ function PokemonGoAPI() {
 	self.google = new GoogleOAuth();
 
 	self.playerInfo = {
-		accessToken: '',
+		accessToken: null,
 		debug: true,
 		latitude: 0,
 		longitude: 0,
@@ -153,8 +156,28 @@ function PokemonGoAPI() {
 			platform_requests: []
 		};
 
+		if(self.playerInfo.authTicket && self.isAuthTicketExpired(self.playerInfo.authTicket)) {
+			self.playerInfo.authTicket = null;
+			self.playerInfo.accessToken = null;
+		}
+
 		var env = new RequestEnvelope(req_obj);
-		if(self.playerInfo.authTicket) {
+		if(!self.playerInfo.authTicket) {
+			self.GetAccessToken(function(err, token) {
+				if(err) {
+					return callback(err);
+				} else {
+					env.auth_info = {
+						provider: self.playerInfo.provider,
+						token: {
+							contents: token,
+							unknown2: 59
+						}
+					};
+					self.processProtobufRequest(req, env, callback);
+				}
+			});
+		} else {
 			env.auth_ticket = self.playerInfo.authTicket;
 
 			self.signatureBuilder.setAuthTicket(self.playerInfo.authTicket);
@@ -173,16 +196,16 @@ function PokemonGoAPI() {
 					self.processProtobufRequest(req, env, callback);
 				}
 			});
-		} else {
-			env.auth_info = {
-				provider: self.playerInfo.provider,
-				token: {
-					contents: self.playerInfo.accessToken,
-					unknown2: 59
-				}
-			};
-			self.processProtobufRequest(req, env, callback);
 		}
+	}
+
+	self.isAuthTicketExpired = function(authTicket) {
+		var now = new Date().getTime();
+		var ms_remaining = authTicket.expire_timestamp_ms.toString() - now;
+		if(ms_remaining <= 0) {
+			return true;
+		}
+		return false;
 	}
 
 	self.processProtobufRequest = function (req, data, callback) {
@@ -221,8 +244,10 @@ function PokemonGoAPI() {
 			if(ret_obj) {
 				if(ret_obj.auth_ticket) {
 					self.playerInfo.authTicket = ret_obj.auth_ticket;
+					api_req(req, callback);
+				} else {
+					return callback(null, ret_obj);
 				}
-				return callback(null, ret_obj);
 			} else {
 				api_req(req, callback);
 			}
@@ -230,6 +255,8 @@ function PokemonGoAPI() {
 	}
 
 	self.init = function(username, password, location, provider, callback) {
+		_username = username;
+		_password = password;
 		self.signatureBuilder = new pogoSignature.Builder();
 		if(provider !== 'ptc' && provider !== 'google') {
 			return callback(new Error('Invalid provider'));
@@ -245,7 +272,7 @@ function PokemonGoAPI() {
 				return callback(err);
 			}
 			// Getting access token
-			self.GetAccessToken(username, password, function(err, token) {
+			self.GetAccessToken(function(err, token) {
 				if(err) {
 					return callback(err);
 				} else {
@@ -264,27 +291,30 @@ function PokemonGoAPI() {
 		});
 	};
 
-	self.GetAccessToken = function(user, pass, callback) {
-		self.DebugPrint('[i] Logging with user: ' + user);
-		if(self.playerInfo.provider === 'ptc') {
-			Logins.PokemonClub(user, pass, self, function(err, token) {
-				if(err) {
-					return callback(err);
-				}
+	self.GetAccessToken = function(callback) {
+		if(self.playerInfo.accessToken === undefined || self.playerInfo.accessToken == null) {
+			self.DebugPrint('[i] Logging with user: ' + _username);
+			if(self.playerInfo.provider === 'ptc') {
+				Logins.PokemonClub(_username, _password, self, function(err, token) {
+					if(err) {
+						return callback(err);
+					}
 
-				self.playerInfo.accessToken = token;
-				self.DebugPrint('[i] Received PTC access token!');
-				callback(null, token);
-			});
+					self.DebugPrint('[i] Received PTC access token!');
+					callback(null, token);
+				});
+			} else {
+				Logins.GoogleAccount(_username, _password, self, function(err, token) {
+					if(err) {
+						return callback(err);
+					}
+
+					self.DebugPrint('[i] Received Google access token!');
+					callback(null, token);
+				});
+			}
 		} else {
-			Logins.GoogleAccount(user, pass, self, function(err, token) {
-				if(err) {
-					return callback(err);
-				}
-
-				self.DebugPrint('[i] Received Google access token!');
-				callback(null, token);
-			});
+			callback(null, self.playerInfo.accessToken);
 		}
 	};
 
@@ -410,8 +440,18 @@ function PokemonGoAPI() {
 		request[type] = null;
 		self.MakeCall(request, function(err, responses) {
 			var ret = null;
-			if(responses != null && responses[type].inventory_delta.inventory_items !== undefined) {
-				ret = responses[type].inventory_delta.inventory_items;
+			if(responses != null) {
+				if(responses[type]) {
+					if(responses[type].inventory_delta.inventory_items !== undefined) {
+						ret = responses[type].inventory_delta.inventory_items;
+					} else {
+						console.log("\t\tresponses[type].inventory_delta.inventory_items === undefined");
+					}
+				} else {
+					console.log("\t\tresponses[type] not set");
+				}
+			} else {
+				console.log("\t\tresponses == null");
 			}
 			callback(err, ret);
 		});
@@ -512,6 +552,35 @@ function PokemonGoAPI() {
 		});
 	};
 
+	self.EncounterPokemon = function(mapPokemon, callback) {
+		var type;
+		var request = {};
+		if(mapPokemon.fort_id !== undefined && mapPokemon.fort_id != null) {
+			type = "DISK_ENCOUNTER";
+			request[type] = {
+				encounter_id: mapPokemon.encounter_id,
+				fort_id: mapPokemon.fort_id,
+				player_latitude: self.playerInfo.latitude,
+				player_longitude: self.playerInfo.longitude
+			};
+		} else {
+			type = "ENCOUNTER";
+			request[type] = {
+				encounter_id: mapPokemon.encounter_id,
+				spawn_point_id: mapPokemon.spawn_point_id,
+				player_latitude: self.playerInfo.latitude,
+				player_longitude: self.playerInfo.longitude
+			};
+		}
+		self.MakeCall(request, function(err, responses) {
+			var ret = null;
+			if(responses != null) {
+				ret = responses[type];
+			}
+			callback(err, ret);
+		});
+	};
+
 	self.CatchPokemon = function(mapPokemon, normalizedHitPosition, normalizedReticleSize, spinModifier, pokeball, callback) {
 		var type = "CATCH_POKEMON";
 		var request = {};
@@ -519,11 +588,16 @@ function PokemonGoAPI() {
 			encounter_id: mapPokemon.encounter_id,
 			pokeball: pokeball,
 			normalized_reticle_size: normalizedReticleSize,
-			spawn_point_id: mapPokemon.spawn_point_id,
 			hit_pokemon: true,
 			spin_modifier: spinModifier,
 			normalized_hit_position: normalizedHitPosition
 		};
+		if(mapPokemon.fort_id !== undefined && mapPokemon.fort_id != null) {
+			request[type].spawn_point_id = mapPokemon.fort_id;
+		} else {
+			request[type].spawn_point_id = mapPokemon.spawn_point_id;
+		}
+
 		self.MakeCall(request, function(err, responses) {
 			var ret = null;
 			if(responses != null) {
@@ -549,38 +623,22 @@ function PokemonGoAPI() {
 		});
 	};
 
-	self.EncounterPokemon = function(mapPokemon, callback) {
-		var type = "ENCOUNTER";
-		var request = {};
-		request[type] = {
-			encounter_id: mapPokemon.encounter_id,
-			spawn_point_id: mapPokemon.spawn_point_id,
-			player_latitude: self.playerInfo.latitude,
-			player_longitude: self.playerInfo.longitude
-		};
-		self.MakeCall(request, function(err, responses) {
-			var ret = null;
-			if(responses != null) {
-				ret = responses[type];
-			}
-			callback(err, ret);
-		});
-	};
-
 	self.DropItem = function(item_id, count, callback) {
-		var type = "RECYCLE_INVENTORY_ITEM";
-		var request = {};
-		request[type] = {
-			item_id: item_id,
-			count: count
-		};
-		self.MakeCall(request, function(err, responses) {
-			var ret = null;
-			if(responses != null) {
-				ret = responses[type];
-			}
-			callback(err, ret);
-		});
+		if(count > 0) {
+			var type = "RECYCLE_INVENTORY_ITEM";
+			var request = {};
+			request[type] = {
+				item_id: item_id,
+				count: count
+			};
+			self.MakeCall(request, function(err, responses) {
+				var ret = null;
+				if(responses != null) {
+					ret = responses[type];
+				}
+				callback(err, ret);
+			});
+		}
 	};
 
 	self.ReleasePokemon = function(pokemon, callback) {
@@ -722,7 +780,7 @@ function PokemonGoAPI() {
 		if(item === undefined) {
 			throw "item not defined in getItemInfo";
 		}
-		item_info.name = self.getObjKeyByValue(POGOProtos.Inventory.Item.ItemId, item.item_id).replace(/item /g, "");
+		item_info.name = self.getObjKeyByValue(POGOProtos.Inventory.Item.ItemId, item.item_id).replace(/item /ig, "");
 
 		return item_info;
 	}
