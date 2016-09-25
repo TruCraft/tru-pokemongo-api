@@ -794,7 +794,10 @@ function PokemonGoAPI() {
 		 "name":"Ivysaur",
 		 "type": "Grass / Poison",
 		 */
-		pokemon_info.name = self.getObjKeyByValue(POGOProtos.Enums.PokemonId, pokemon.pokemon_id).replace(/item /g, "");
+		pokemon_info.name = self.getObjKeyByValue(POGOProtos.Enums.PokemonId, pokemon.pokemon_id);
+		if(!pokemon_info.name) {
+			pokemon_info.name = "UNKNOWN POKEMON (" + pokemon.pokemon_id + ")";
+		}
 
 		return pokemon_info;
 	}
@@ -805,7 +808,7 @@ function PokemonGoAPI() {
 			throw "status_id not defined in getCatchStatus";
 		}
 
-		status = self.getObjKeyByValue(Responses.CatchPokemonResponse.CatchStatus, status_id).replace(/item /g, "");
+		status = self.getObjKeyByValue(Responses.CatchPokemonResponse.CatchStatus, status_id);
 
 		return status;
 	}
@@ -816,7 +819,7 @@ function PokemonGoAPI() {
 			throw "status_id not defined in getEncounterStatus";
 		}
 
-		status = self.getObjKeyByValue(Responses.EncounterResponse.Status, status_id).replace(/item /g, "");
+		status = self.getObjKeyByValue(Responses.EncounterResponse.Status, status_id);
 
 		return status;
 	}
@@ -827,7 +830,7 @@ function PokemonGoAPI() {
 			throw "result_id not defined in getEncounterStatus";
 		}
 
-		result = self.getObjKeyByValue(Responses.RecycleInventoryItemResponse.Result, result_id).replace(/item /g, "");
+		result = self.getObjKeyByValue(Responses.RecycleInventoryItemResponse.Result, result_id);
 
 		return result;
 	}
@@ -838,7 +841,7 @@ function PokemonGoAPI() {
 			throw "result_id not defined in getFortSearchResult";
 		}
 
-		result = self.getObjKeyByValue(Responses.FortSearchResponse.Result, result_id).replace(/item /g, "");
+		result = self.getObjKeyByValue(Responses.FortSearchResponse.Result, result_id);
 
 		return result;
 	}
