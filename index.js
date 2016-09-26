@@ -388,9 +388,47 @@ function PokemonGoAPI() {
 			},
 			GET_HATCHED_EGGS: null,
 			GET_BUDDY_WALKED: null,
-			GET_INVENTORY: null, // why would we need this here?
+			GET_INVENTORY: null, // why would we need this here? maybe use it to get available pokeballs and their counts
 			CHECK_AWARDED_BADGES: null,
+			/*
+			 bool success = 1;
+			 repeated .POGOProtos.Enums.BadgeType awarded_badges = 2;
+			 repeated int32 awarded_badge_levels = 3;
+			 */
 			DOWNLOAD_SETTINGS: "54b359c97e46900f87211ef6e6dd0b7f2a3ea1f5"
+			// TODO: figure out where to best do these:
+			//COLLECT_DAILY_DEFENDER_BONUS
+			/*
+			msg
+			 none
+
+			resp
+			 .POGOProtos.Networking.Responses.CollectDailyDefenderBonusResponse.Result result = 1;
+			 repeated string currency_type = 2;
+			 repeated int32 currency_awarded = 3;
+			 int32 defenders_count = 4;
+
+			 enum Result {
+			 UNSET = 0;
+			 SUCCESS = 1;
+			 FAILURE = 2;
+			 TOO_SOON = 3;
+			 NO_DEFENDERS = 4;
+			 */
+			//COLLECT_DAILY_BONUS
+			/*
+			msg
+			 none
+
+			resp
+			 .POGOProtos.Networking.Responses.CollectDailyBonusResponse.Result result = 1;
+
+			 enum Result {
+			 UNSET = 0;
+			 SUCCESS = 1;
+			 FAILURE = 2;
+			 TOO_SOON = 3;
+			 */
 		};
 
 		self.MakeCall(requests, function(err, responses) {
@@ -549,6 +587,23 @@ function PokemonGoAPI() {
 				ret = responses[type];
 			}
 			callback(err, ret);
+		});
+	};
+
+	self.GetLevelUpRewards = function(level, callback) {
+		var type = "LEVEL_UP_REWARDS";
+		var request = {};
+		request[type] = {level: level};
+		self.MakeCall(request, function(err, responses) {
+			if(err) {
+				console.log(err);
+			} else {
+				var ret = null;
+				if(responses != null && responses[type] !== undefined) {
+					ret = responses[type];
+				}
+				callback(err, ret);
+			}
 		});
 	};
 
@@ -780,7 +835,12 @@ function PokemonGoAPI() {
 		if(item === undefined) {
 			throw "item not defined in getItemInfo";
 		}
-		item_info.name = self.getObjKeyByValue(POGOProtos.Inventory.Item.ItemId, item.item_id).replace(/item /ig, "");
+		item_info.name = self.getObjKeyByValue(POGOProtos.Inventory.Item.ItemId, item.item_id);
+		if(!item_info.name) {
+			item_info.name = "UNKNOWN ITEM (" + item.item_id + ")";
+		} else {
+			item_info.name = item_info.name.replace(/item /ig, "");
+		}
 
 		return item_info;
 	}
@@ -791,7 +851,7 @@ function PokemonGoAPI() {
 			throw "pokemon not defined in getPokemonInfo";
 		}
 		/**
-		 "name":"Ivysaur",
+		 * TODO: figure out types...
 		 "type": "Grass / Poison",
 		 */
 		pokemon_info.name = self.getObjKeyByValue(POGOProtos.Enums.PokemonId, pokemon.pokemon_id);
@@ -800,6 +860,22 @@ function PokemonGoAPI() {
 		}
 
 		return pokemon_info;
+	}
+
+	self.getPokemonFamilyName = function(pokemon_family_id) {
+		var pokemon_family;
+		if(pokemon_family_id === undefined) {
+			throw "pokemon_family_id not defined in getPokemonFamilyName";
+		}
+
+		pokemon_family = self.getObjKeyByValue(POGOProtos.Enums.PokemonFamilyId, pokemon_family_id);
+		if(!pokemon_family) {
+			pokemon_family = "UNKNOWN POKEMON FAMILY (" + pokemon_family_id + ")";
+		} else {
+			pokemon_family = pokemon_family.replace(/family /ig, "");
+		}
+
+		return pokemon_family;
 	}
 
 	self.getCatchStatus = function(status_id) {
@@ -824,13 +900,28 @@ function PokemonGoAPI() {
 		return status;
 	}
 
+	self.getDiskEncounterResult = function(result_id) {
+		var result;
+		if(result_id === undefined) {
+			throw "result_id not defined in getDiskEncounterResult";
+		}
+
+		result = self.getObjKeyByValue(Responses.DiskEncounterResponse.Result, result_id);
+
+		return result;
+	}
+
 	self.getRecycleItemResult = function(result_id) {
 		var result;
 		if(result_id === undefined) {
-			throw "result_id not defined in getEncounterStatus";
+			throw "result_id not defined in getRecycleItemResult";
 		}
 
 		result = self.getObjKeyByValue(Responses.RecycleInventoryItemResponse.Result, result_id);
+
+		if(!result) {
+			result = "UNKNOWN RECYCLE ITEM RESULT (" + result_id + ")";
+		}
 
 		return result;
 	}
@@ -846,11 +937,40 @@ function PokemonGoAPI() {
 		return result;
 	}
 
+	self.getLevelUpRewardsResult = function(result_id) {
+		var result;
+		if(result_id === undefined) {
+			throw "result_id not defined in getLevelUpRewardsResult";
+		}
+
+		result = self.getObjKeyByValue(Responses.LevelUpRewardsResponse.Result, result_id);
+
+		return result;
+	}
+
+	self.getBadgeType = function(badge_type_id) {
+		var badge_type;
+		if(badge_type_id === undefined) {
+			throw "badge_type_id not defined in getBadgeType";
+		}
+
+		badge_type = self.getObjKeyByValue(POGOProtos.Enums.BadgeType, badge_type_id);
+		if(!badge_type) {
+			badge_type = "UNKNOWN BADGE TYPE (" + badge_type_id + ")";
+		} else {
+			badge_type = badge_type.replace(/badge /ig, "");
+		}
+
+		return badge_type;
+	}
+
 	self.formatObjKeyString = function(string) {
-		string = string.replace(/_/g, " ");
-		string = string.replace(/\w\S*/g, function(txt) {
-			return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
-		});
+		if(string !== null) {
+			string = string.replace(/_/g, " ");
+			string = string.replace(/\w\S*/g, function(txt) {
+				return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+			});
+		}
 
 		return string;
 	}
