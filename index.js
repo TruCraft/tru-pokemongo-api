@@ -729,12 +729,12 @@ function PokemonGoAPI() {
 		});
 	};
 
-	self.UseItemEggIncubator = function(item_id, pokemonId, callback) {
+	self.UseItemEggIncubator = function(item_id, pokemon_id, callback) {
 		var type = "USE_ITEM_EGG_INCUBATOR";
 		var request = {};
 		request[type] = {
 			item_id: item_id,
-			pokemon_id: pokemonId
+			pokemon_id: pokemon_id
 		};
 		self.MakeCall(request, function(err, responses) {
 			var ret = null;
@@ -936,6 +936,17 @@ function PokemonGoAPI() {
 		}
 
 		result = self.getObjKeyByValue(Responses.FortSearchResponse.Result, result_id);
+
+		return result;
+	}
+
+	self.getUseItemEggIncubatorResult = function(result_id) {
+		var result;
+		if(result_id === undefined) {
+			throw "result_id not defined in getUseItemEggIncubatorResult";
+		}
+
+		result = self.getObjKeyByValue(Responses.UseItemEggIncubatorResponse.Result, result_id);
 
 		return result;
 	}
