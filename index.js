@@ -285,7 +285,14 @@ function PokemonGoAPI() {
 					} else {
 						self.playerInfo.apiEndpoint = api_endpoint;
 					}
-					callback(null);
+					// get initial heartbeat
+					self.Heartbeat(function(err, res) {
+						if(err) {
+							return callback(err);
+						} else {
+							callback(null, res);
+						}
+					});
 				});
 			});
 		});
@@ -325,11 +332,12 @@ function PokemonGoAPI() {
 
 		api_req(req, function(err, ret) {
 			if(err) {
-				return callback(err);
+				callback(err);
+			} else {
+				var api_endpoint = 'https://' + ret.api_url + '/rpc';
+				self.DebugPrint('[i] Received API Endpoint: ' + api_endpoint);
+				callback(null, api_endpoint);
 			}
-			var api_endpoint = 'https://' + ret.api_url + '/rpc';
-			self.DebugPrint('[i] Received API Endpoint: ' + api_endpoint);
-			return callback(null, api_endpoint);
 		});
 	};
 
@@ -388,13 +396,8 @@ function PokemonGoAPI() {
 			},
 			GET_HATCHED_EGGS: null,
 			GET_BUDDY_WALKED: null,
-			GET_INVENTORY: null, // why would we need this here? maybe use it to get available pokeballs and their counts
+			GET_INVENTORY: null,
 			CHECK_AWARDED_BADGES: null,
-			/*
-			 bool success = 1;
-			 repeated .POGOProtos.Enums.BadgeType awarded_badges = 2;
-			 repeated int32 awarded_badge_levels = 3;
-			 */
 			DOWNLOAD_SETTINGS: "54b359c97e46900f87211ef6e6dd0b7f2a3ea1f5"
 			// TODO: figure out where to best do these:
 			//COLLECT_DAILY_DEFENDER_BONUS
@@ -1020,6 +1023,11 @@ function PokemonGoAPI() {
 			}
 			return result;
 		}
+	}
+
+	self.sortLocations = function(locations, callback) {
+		locations.sort(self.dynamicSortMultiple("latitude", "longitude"));
+		callback(locations);
 	}
 }
 
