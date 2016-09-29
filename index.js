@@ -59,10 +59,21 @@ function PokemonGoAPI() {
 	self.getObjKeyByValue = function(obj, val) {
 		for(var i in obj) {
 			if (obj[i] === val) {
-				return self.formatObjKeyString(i);
+				return self.formatString(i);
 			}
 		}
 		return null;
+	}
+
+	self.formatString = function(string) {
+		if(string !== null) {
+			string = string.replace(/_/g, " ");
+			string = string.replace(/\w\S*/g, function(txt) {
+				return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+			});
+		}
+
+		return string;
 	}
 
 	// Set device info for uk6
@@ -1007,17 +1018,6 @@ function PokemonGoAPI() {
 		}
 
 		return badge_type;
-	}
-
-	self.formatObjKeyString = function(string) {
-		if(string !== null) {
-			string = string.replace(/_/g, " ");
-			string = string.replace(/\w\S*/g, function(txt) {
-				return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
-			});
-		}
-
-		return string;
 	}
 
 	self.getMaxPokemonNameLength = function() {
