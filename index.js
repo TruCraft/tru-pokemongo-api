@@ -405,6 +405,7 @@ function PokemonGoAPI() {
 				latitude: self.playerInfo.latitude,
 				longitude: self.playerInfo.longitude
 			},
+			GET_PLAYER: null,
 			GET_HATCHED_EGGS: null,
 			GET_BUDDY_WALKED: null,
 			GET_INVENTORY: null,
