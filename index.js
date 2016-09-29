@@ -398,40 +398,8 @@ function PokemonGoAPI() {
 			GET_BUDDY_WALKED: null,
 			GET_INVENTORY: null,
 			CHECK_AWARDED_BADGES: null,
+			COLLECT_DAILY_DEFENDER_BONUS: null,
 			DOWNLOAD_SETTINGS: "54b359c97e46900f87211ef6e6dd0b7f2a3ea1f5"
-			// TODO: figure out where to best do these:
-			//COLLECT_DAILY_DEFENDER_BONUS
-			/*
-			msg
-			 none
-
-			resp
-			 .POGOProtos.Networking.Responses.CollectDailyDefenderBonusResponse.Result result = 1;
-			 repeated string currency_type = 2;
-			 repeated int32 currency_awarded = 3;
-			 int32 defenders_count = 4;
-
-			 enum Result {
-			 UNSET = 0;
-			 SUCCESS = 1;
-			 FAILURE = 2;
-			 TOO_SOON = 3;
-			 NO_DEFENDERS = 4;
-			 */
-			//COLLECT_DAILY_BONUS
-			/*
-			msg
-			 none
-
-			resp
-			 .POGOProtos.Networking.Responses.CollectDailyBonusResponse.Result result = 1;
-
-			 enum Result {
-			 UNSET = 0;
-			 SUCCESS = 1;
-			 FAILURE = 2;
-			 TOO_SOON = 3;
-			 */
 		};
 
 		self.MakeCall(requests, function(err, responses) {
@@ -443,10 +411,14 @@ function PokemonGoAPI() {
 		});
 	};
 
-	self.GetFortDetails = function(fortid, fortlat, fortlon, callback) {
+	self.GetFortDetails = function(fort, callback) {
 		var type = "FORT_DETAILS";
 		var request = {};
-		request[type] = {fort_id: fortid, latitude: fortlat, longitude: fortlon};
+		request[type] = {
+			fort_id: fort.id,
+			latitude: fort.latitude,
+			longitude: fort.longitude
+		};
 		self.MakeCall(request, function(err, responses) {
 			var ret = null;
 			if(responses != null) {
@@ -456,15 +428,52 @@ function PokemonGoAPI() {
 		});
 	};
 
-	self.GetFort = function(fortid, fortlat, fortlon, callback) {
+	self.getGymDetails = function(gym, callback) {
+		var type = "GET_GYM_DETAILS";
+		var request = {};
+		request[type] = {
+			gym_id: gym.id,
+			gym_latitude: gym.latitude,
+			gym_longitude: gym.longitude,
+			player_latitude: self.playerInfo.latitude,
+			player_longitude: self.playerInfo.longitude
+		};
+		self.MakeCall(request, function(err, responses) {
+			var ret = null;
+			if(responses != null) {
+				ret = responses[type];
+			}
+			callback(err, ret);
+		});
+	};
+
+	self.GetFort = function(fort, callback) {
 		var type = "FORT_SEARCH";
 		var request = {};
 		request[type] = {
-			fort_id: fortid,
+			fort_id: fort.id,
 			player_latitude: self.playerInfo.latitude,
 			player_longitude: self.playerInfo.longitude,
-			fort_latitude: fortlat,
-			fort_longitude: fortlon
+			fort_latitude: fort.latitude,
+			fort_longitude: fort.longitude
+		};
+		self.MakeCall(request, function(err, responses) {
+			var ret = null;
+			if(responses != null) {
+				ret = responses[type];
+			}
+			callback(err, ret);
+		});
+	};
+
+	self.FortDeployPokemon = function(fort, pokemon_id, callback) {
+		var type = "FORT_DEPLOY_POKEMON";
+		var request = {};
+		request[type] = {
+			fort_id: fort.id,
+			player_latitude: self.playerInfo.latitude,
+			player_longitude: self.playerInfo.longitude,
+			pokemon_id: pokemon_id
 		};
 		self.MakeCall(request, function(err, responses) {
 			var ret = null;
@@ -936,6 +945,28 @@ function PokemonGoAPI() {
 		}
 
 		result = self.getObjKeyByValue(Responses.FortSearchResponse.Result, result_id);
+
+		return result;
+	}
+
+	self.getFortDeployPokemonResult = function(result_id) {
+		var result;
+		if(result_id === undefined) {
+			throw "result_id not defined in getFortDeployPokemonResult";
+		}
+
+		result = self.getObjKeyByValue(Responses.FortDeployPokemonResponse.Result, result_id);
+
+		return result;
+	}
+
+	self.getCollectDailyDefenderBonusResult = function(result_id) {
+		var result;
+		if(result_id === undefined) {
+			throw "result_id not defined in getCollectDailyDefenderBonusResult";
+		}
+
+		result = self.getObjKeyByValue(Responses.CollectDailyDefenderBonusResponse.Result, result_id);
 
 		return result;
 	}
