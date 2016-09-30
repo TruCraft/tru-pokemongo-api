@@ -58,7 +58,7 @@ function PokemonGoAPI() {
 
 	self.getObjKeyByValue = function(obj, val) {
 		for(var i in obj) {
-			if (obj[i] === val) {
+			if(obj[i] === val) {
 				return self.formatString(i);
 			}
 		}
@@ -93,10 +93,14 @@ function PokemonGoAPI() {
 			return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
 		});
 		request_type = request_type.replace(/ /g, "");
-		var ret = {message: request_type + "Message", response: request_type + "Response"};
-		return ret;
+		return {message: request_type + "Message", response: request_type + "Response"};
 	}
 
+	/**
+	 *
+	 * @returns {{latitude: number, longitude: number, altitude: number}}
+	 * @constructor
+	 */
 	self.GetLocationCoords = function() {
 		return {
 			latitude: self.playerInfo.latitude,
@@ -105,6 +109,13 @@ function PokemonGoAPI() {
 		};
 	};
 
+	/**
+	 *
+	 * @param location
+	 * @param callback
+	 * @returns {*}
+	 * @constructor
+	 */
 	self.SetLocation = function(location, callback) {
 		if(location.type !== 'name' && location.type !== 'coords') {
 			return callback(new Error('Invalid location type'));
@@ -151,6 +162,11 @@ function PokemonGoAPI() {
 		}
 	};
 
+	/**
+	 *
+	 * @param req
+	 * @param callback
+	 */
 	function api_req(req, callback) {
 		if(!Array.isArray(req)) {
 			req = [req];
@@ -210,6 +226,11 @@ function PokemonGoAPI() {
 		}
 	}
 
+	/**
+	 *
+	 * @param authTicket
+	 * @returns {boolean}
+	 */
 	self.isAuthTicketExpired = function(authTicket) {
 		var now = new Date().getTime();
 		var ms_remaining = authTicket.expire_timestamp_ms.toString() - now;
@@ -219,7 +240,13 @@ function PokemonGoAPI() {
 		return false;
 	}
 
-	self.processProtobufRequest = function (req, data, callback) {
+	/**
+	 *
+	 * @param req
+	 * @param data
+	 * @param callback
+	 */
+	self.processProtobufRequest = function(req, data, callback) {
 		var api_endpoint = (self.playerInfo.apiEndpoint ? self.playerInfo.apiEndpoint : api_url);
 
 		var options = {
@@ -265,20 +292,26 @@ function PokemonGoAPI() {
 		});
 	}
 
-	self.init = function(username, password, location, provider, callback) {
-		_username = username;
-		_password = password;
+	/**
+	 *
+	 * @param options		Should contain username, password, location, provider, and collect
+	 * @param callback
+	 * @returns {*}
+	 */
+	self.init = function(options, callback) {
+		_username = options.username;
+		_password = options.password;
 		self.signatureBuilder = new pogoSignature.Builder();
-		if(provider !== 'ptc' && provider !== 'google') {
+		if(options.provider !== 'ptc' && options.provider !== 'google') {
 			return callback(new Error('Invalid provider'));
 		}
 
 		self.playerInfo.initTime = new Date().getTime();
 
 		// set provider
-		self.playerInfo.provider = provider;
+		self.playerInfo.provider = options.provider;
 		// Updating location
-		self.SetLocation(location, function(err) {
+		self.SetLocation(options.location, function(err) {
 			if(err) {
 				return callback(err);
 			}
@@ -297,7 +330,7 @@ function PokemonGoAPI() {
 						self.playerInfo.apiEndpoint = api_endpoint;
 					}
 					// get initial heartbeat
-					self.Heartbeat(function(err, res) {
+					self.Heartbeat({collect: options.collect}, function(err, res) {
 						if(err) {
 							return callback(err);
 						} else {
@@ -309,6 +342,11 @@ function PokemonGoAPI() {
 		});
 	};
 
+	/**
+	 *
+	 * @param callback
+	 * @constructor
+	 */
 	self.GetAccessToken = function(callback) {
 		if(self.playerInfo.accessToken === undefined || self.playerInfo.accessToken == null) {
 			self.DebugPrint('[i] Logging with user: ' + _username);
@@ -336,6 +374,11 @@ function PokemonGoAPI() {
 		}
 	};
 
+	/**
+	 *
+	 * @param callback
+	 * @constructor
+	 */
 	self.GetApiEndpoint = function(callback) {
 		var req = [
 			{"request_type": RequestType.GET_PLAYER}
@@ -352,6 +395,12 @@ function PokemonGoAPI() {
 		});
 	};
 
+	/**
+	 *
+	 * @param request_messages
+	 * @param callback
+	 * @constructor
+	 */
 	self.MakeCall = function(request_messages, callback) {
 		var requests = [];
 		var actions = [];
@@ -388,7 +437,13 @@ function PokemonGoAPI() {
 		});
 	};
 
-	self.Heartbeat = function(callback) {
+	/**
+	 *
+	 * @param options
+	 * @param callback
+	 * @constructor
+	 */
+	self.Heartbeat = function(options, callback) {
 		// Generating walk data using s2 geometry
 		var walk = self.GetNeighbors(self.playerInfo.latitude, self.playerInfo.longitude).sort(function(a, b) {
 			return a > b;
@@ -410,9 +465,11 @@ function PokemonGoAPI() {
 			GET_BUDDY_WALKED: null,
 			GET_INVENTORY: null,
 			CHECK_AWARDED_BADGES: null,
-			COLLECT_DAILY_DEFENDER_BONUS: null,
 			DOWNLOAD_SETTINGS: "54b359c97e46900f87211ef6e6dd0b7f2a3ea1f5"
 		};
+		if(options.collect) {
+			requests.COLLECT_DAILY_DEFENDER_BONUS = null;
+		}
 
 		self.MakeCall(requests, function(err, responses) {
 			var ret = null;
@@ -423,6 +480,12 @@ function PokemonGoAPI() {
 		});
 	};
 
+	/**
+	 *
+	 * @param fort
+	 * @param callback
+	 * @constructor
+	 */
 	self.GetFortDetails = function(fort, callback) {
 		var type = "FORT_DETAILS";
 		var request = {};
@@ -440,6 +503,11 @@ function PokemonGoAPI() {
 		});
 	};
 
+	/**
+	 *
+	 * @param gym
+	 * @param callback
+	 */
 	self.getGymDetails = function(gym, callback) {
 		var type = "GET_GYM_DETAILS";
 		var request = {};
@@ -459,6 +527,12 @@ function PokemonGoAPI() {
 		});
 	};
 
+	/**
+	 *
+	 * @param fort
+	 * @param callback
+	 * @constructor
+	 */
 	self.GetFort = function(fort, callback) {
 		var type = "FORT_SEARCH";
 		var request = {};
@@ -478,6 +552,13 @@ function PokemonGoAPI() {
 		});
 	};
 
+	/**
+	 *
+	 * @param fort
+	 * @param pokemon_id
+	 * @param callback
+	 * @constructor
+	 */
 	self.FortDeployPokemon = function(fort, pokemon_id, callback) {
 		var type = "FORT_DEPLOY_POKEMON";
 		var request = {};
@@ -496,6 +577,11 @@ function PokemonGoAPI() {
 		});
 	};
 
+	/**
+	 *
+	 * @param callback
+	 * @constructor
+	 */
 	self.GetInventory = function(callback) {
 		var type = "GET_INVENTORY";
 		var request = {};
@@ -519,6 +605,11 @@ function PokemonGoAPI() {
 		});
 	};
 
+	/**
+	 *
+	 * @param callback
+	 * @constructor
+	 */
 	self.GetProfile = function(callback) {
 		var type = "GET_PLAYER";
 		var request = {};
@@ -536,6 +627,11 @@ function PokemonGoAPI() {
 		});
 	};
 
+	/**
+	 *
+	 * @param callback
+	 * @constructor
+	 */
 	self.GetJournal = function(callback) {
 		var type = "SFIDA_ACTION_LOG";
 		var request = {};
@@ -549,6 +645,12 @@ function PokemonGoAPI() {
 		});
 	};
 
+	/**
+	 *
+	 * @param pokemonId
+	 * @param callback
+	 * @constructor
+	 */
 	self.EvolvePokemon = function(pokemonId, callback) {
 		var type = "EVOLVE_POKEMON";
 		var request = {};
@@ -562,6 +664,12 @@ function PokemonGoAPI() {
 		});
 	};
 
+	/**
+	 *
+	 * @param pokemonId
+	 * @param callback
+	 * @constructor
+	 */
 	self.TransferPokemon = function(pokemonId, callback) {
 		var type = "RELEASE_POKEMON";
 		var request = {};
@@ -575,6 +683,13 @@ function PokemonGoAPI() {
 		});
 	};
 
+	/**
+	 *
+	 * @param pokemonId
+	 * @param favorite
+	 * @param callback
+	 * @constructor
+	 */
 	self.SetFavoritePokemon = function(pokemonId, favorite, callback) {
 		var type = "SET_FAVORITE_POKEMON";
 		var request = {};
@@ -588,6 +703,11 @@ function PokemonGoAPI() {
 		});
 	};
 
+	/**
+	 *
+	 * @param callback
+	 * @constructor
+	 */
 	self.GetHatchedEggs = function(callback) {
 		var type = "GET_HATCHED_EGGS";
 		var request = {};
@@ -601,6 +721,11 @@ function PokemonGoAPI() {
 		});
 	};
 
+	/**
+	 *
+	 * @param callback
+	 * @constructor
+	 */
 	self.GetBuddyWalked = function(callback) {
 		var type = "GET_BUDDY_WALKED";
 		var request = {};
@@ -614,6 +739,12 @@ function PokemonGoAPI() {
 		});
 	};
 
+	/**
+	 *
+	 * @param level
+	 * @param callback
+	 * @constructor
+	 */
 	self.GetLevelUpRewards = function(level, callback) {
 		var type = "LEVEL_UP_REWARDS";
 		var request = {};
@@ -631,6 +762,12 @@ function PokemonGoAPI() {
 		});
 	};
 
+	/**
+	 *
+	 * @param mapPokemon
+	 * @param callback
+	 * @constructor
+	 */
 	self.EncounterPokemon = function(mapPokemon, callback) {
 		var type;
 		var request = {};
@@ -660,6 +797,16 @@ function PokemonGoAPI() {
 		});
 	};
 
+	/**
+	 *
+	 * @param mapPokemon
+	 * @param normalizedHitPosition
+	 * @param normalizedReticleSize
+	 * @param spinModifier
+	 * @param pokeball
+	 * @param callback
+	 * @constructor
+	 */
 	self.CatchPokemon = function(mapPokemon, normalizedHitPosition, normalizedReticleSize, spinModifier, pokeball, callback) {
 		var type = "CATCH_POKEMON";
 		var request = {};
@@ -686,6 +833,13 @@ function PokemonGoAPI() {
 		});
 	};
 
+	/**
+	 *
+	 * @param pokemonId
+	 * @param nickname
+	 * @param callback
+	 * @constructor
+	 */
 	self.RenamePokemon = function(pokemonId, nickname, callback) {
 		var type = "NICKNAME_POKEMON";
 		var request = {};
@@ -702,6 +856,13 @@ function PokemonGoAPI() {
 		});
 	};
 
+	/**
+	 *
+	 * @param item_id
+	 * @param count
+	 * @param callback
+	 * @constructor
+	 */
 	self.DropItem = function(item_id, count, callback) {
 		if(count > 0) {
 			var type = "RECYCLE_INVENTORY_ITEM";
@@ -720,6 +881,12 @@ function PokemonGoAPI() {
 		}
 	};
 
+	/**
+	 *
+	 * @param pokemon
+	 * @param callback
+	 * @constructor
+	 */
 	self.ReleasePokemon = function(pokemon, callback) {
 		var type = "RELEASE_POKEMON";
 		var request = {};
@@ -735,6 +902,12 @@ function PokemonGoAPI() {
 		});
 	};
 
+	/**
+	 *
+	 * @param level
+	 * @param callback
+	 * @constructor
+	 */
 	self.LevelUpRewards = function(level, callback) {
 		var type = "LEVEL_UP_REWARDS";
 		var request = {};
@@ -750,6 +923,13 @@ function PokemonGoAPI() {
 		});
 	};
 
+	/**
+	 *
+	 * @param item_id
+	 * @param pokemon_id
+	 * @param callback
+	 * @constructor
+	 */
 	self.UseItemEggIncubator = function(item_id, pokemon_id, callback) {
 		var type = "USE_ITEM_EGG_INCUBATOR";
 		var request = {};
@@ -766,6 +946,11 @@ function PokemonGoAPI() {
 		});
 	};
 
+	/**
+	 *
+	 * @param callback
+	 * @constructor
+	 */
 	self.GetHatchedEggs = function(callback) {
 		var type = "GET_HATCHED_EGGS";
 		var request = {};
@@ -779,6 +964,13 @@ function PokemonGoAPI() {
 		});
 	};
 
+	/**
+	 *
+	 * @param item_id
+	 * @param count
+	 * @param callback
+	 * @constructor
+	 */
 	self.UseItemXpBoost = function(item_id, count, callback) {
 		var type = "USE_ITEM_XP_BOOST";
 		var request = {};
@@ -794,6 +986,11 @@ function PokemonGoAPI() {
 		});
 	};
 
+	/**
+	 *
+	 * @param callback
+	 * @constructor
+	 */
 	self.GetLocation = function(callback) {
 		geocoder.reverseGeocode.apply(geocoder, self.toConsumableArray(self.GetCoords()).concat([function(err, data) {
 			if(data.status === 'ZERO_RESULTS') {
@@ -804,6 +1001,11 @@ function PokemonGoAPI() {
 		}]));
 	};
 
+	/**
+	 *
+	 * @returns {*[]}
+	 * @constructor
+	 */
 	self.GetCoords = function() {
 		var latitude = self.playerInfo.latitude;
 		var longitude = self.playerInfo.longitude;
@@ -811,6 +1013,13 @@ function PokemonGoAPI() {
 		return [latitude, longitude];
 	}
 
+	/**
+	 *
+	 * @param lat
+	 * @param lng
+	 * @returns {*[]}
+	 * @constructor
+	 */
 	self.GetNeighbors = function(lat, lng) {
 		var level = 15;
 		var origin = S2.latLngToKey(lat, lng, level);
@@ -828,6 +1037,11 @@ function PokemonGoAPI() {
 		return walk;
 	}
 
+	/**
+	 *
+	 * @param arr
+	 * @returns {*}
+	 */
 	self.toConsumableArray = function(arr) {
 		if(Array.isArray(arr)) {
 			for(var i = 0, arr2 = Array(arr.length); i < arr.length; i++) {
@@ -839,6 +1053,10 @@ function PokemonGoAPI() {
 		}
 	}
 
+	/**
+	 *
+	 * @returns {*}
+	 */
 	self.getRequestID = function() {
 		var bytes = crypto.randomBytes(8);
 		return Long.fromBits(
@@ -851,8 +1069,8 @@ function PokemonGoAPI() {
 	/**
 	 * Get item info
 	 *
-	 * @param id
-	 * @returns {*}
+	 * @param item
+	 * @returns {{}}
 	 */
 	self.getItemInfo = function(item) {
 		var item_info = {};
@@ -869,6 +1087,11 @@ function PokemonGoAPI() {
 		return item_info;
 	}
 
+	/**
+	 *
+	 * @param pokemon
+	 * @returns {{}}
+	 */
 	self.getPokemonInfo = function(pokemon) {
 		var pokemon_info = {};
 		if(pokemon === undefined) {
@@ -886,6 +1109,11 @@ function PokemonGoAPI() {
 		return pokemon_info;
 	}
 
+	/**
+	 *
+	 * @param pokemon_family_id
+	 * @returns {*}
+	 */
 	self.getPokemonFamilyName = function(pokemon_family_id) {
 		var pokemon_family;
 		if(pokemon_family_id === undefined) {
@@ -902,6 +1130,11 @@ function PokemonGoAPI() {
 		return pokemon_family;
 	}
 
+	/**
+	 *
+	 * @param status_id
+	 * @returns {*}
+	 */
 	self.getCatchStatus = function(status_id) {
 		var status;
 		if(status_id === undefined) {
@@ -913,6 +1146,11 @@ function PokemonGoAPI() {
 		return status;
 	}
 
+	/**
+	 *
+	 * @param status_id
+	 * @returns {*}
+	 */
 	self.getEncounterStatus = function(status_id) {
 		var status;
 		if(status_id === undefined) {
@@ -924,6 +1162,11 @@ function PokemonGoAPI() {
 		return status;
 	}
 
+	/**
+	 *
+	 * @param result_id
+	 * @returns {*}
+	 */
 	self.getDiskEncounterResult = function(result_id) {
 		var result;
 		if(result_id === undefined) {
@@ -935,6 +1178,11 @@ function PokemonGoAPI() {
 		return result;
 	}
 
+	/**
+	 *
+	 * @param result_id
+	 * @returns {*}
+	 */
 	self.getRecycleItemResult = function(result_id) {
 		var result;
 		if(result_id === undefined) {
@@ -950,6 +1198,11 @@ function PokemonGoAPI() {
 		return result;
 	}
 
+	/**
+	 *
+	 * @param result_id
+	 * @returns {*}
+	 */
 	self.getFortSearchResult = function(result_id) {
 		var result;
 		if(result_id === undefined) {
@@ -961,6 +1214,11 @@ function PokemonGoAPI() {
 		return result;
 	}
 
+	/**
+	 *
+	 * @param result_id
+	 * @returns {*}
+	 */
 	self.getFortDeployPokemonResult = function(result_id) {
 		var result;
 		if(result_id === undefined) {
@@ -972,6 +1230,11 @@ function PokemonGoAPI() {
 		return result;
 	}
 
+	/**
+	 *
+	 * @param result_id
+	 * @returns {*}
+	 */
 	self.getCollectDailyDefenderBonusResult = function(result_id) {
 		var result;
 		if(result_id === undefined) {
@@ -983,6 +1246,11 @@ function PokemonGoAPI() {
 		return result;
 	}
 
+	/**
+	 *
+	 * @param result_id
+	 * @returns {*}
+	 */
 	self.getUseItemEggIncubatorResult = function(result_id) {
 		var result;
 		if(result_id === undefined) {
@@ -994,6 +1262,11 @@ function PokemonGoAPI() {
 		return result;
 	}
 
+	/**
+	 *
+	 * @param result_id
+	 * @returns {*}
+	 */
 	self.getLevelUpRewardsResult = function(result_id) {
 		var result;
 		if(result_id === undefined) {
@@ -1005,6 +1278,11 @@ function PokemonGoAPI() {
 		return result;
 	}
 
+	/**
+	 *
+	 * @param badge_type_id
+	 * @returns {*}
+	 */
 	self.getBadgeType = function(badge_type_id) {
 		var badge_type;
 		if(badge_type_id === undefined) {
@@ -1021,6 +1299,10 @@ function PokemonGoAPI() {
 		return badge_type;
 	}
 
+	/**
+	 *
+	 * @returns {number}
+	 */
 	self.getMaxPokemonNameLength = function() {
 		var max_len = 0;
 		if(self.max_pokemon_name_len == null) {
@@ -1036,18 +1318,27 @@ function PokemonGoAPI() {
 		return max_len;
 	}
 
+	/**
+	 *
+	 * @param property
+	 * @returns {Function}
+	 */
 	self.dynamicSort = function(property) {
 		var sortOrder = 1;
 		if(property[0] === "-") {
 			sortOrder = -1;
 			property = property.substr(1);
 		}
-		return function (a,b) {
+		return function(a, b) {
 			var result = (a[property] < b[property]) ? -1 : (a[property] > b[property]) ? 1 : 0;
 			return result * sortOrder;
 		}
 	}
 
+	/**
+	 *
+	 * @returns {Function}
+	 */
 	self.dynamicSortMultiple = function() {
 		/*
 		 * save the arguments object as it will be overwritten
@@ -1055,7 +1346,7 @@ function PokemonGoAPI() {
 		 * consisting of the names of the properties to sort by
 		 */
 		var props = arguments;
-		return function (obj1, obj2) {
+		return function(obj1, obj2) {
 			var i = 0, result = 0, numberOfProperties = props.length;
 			/* try getting a different result from 0 (equal)
 			 * as long as we have extra properties to compare
@@ -1068,6 +1359,11 @@ function PokemonGoAPI() {
 		}
 	}
 
+	/**
+	 *
+	 * @param locations
+	 * @param callback
+	 */
 	self.sortLocations = function(locations, callback) {
 		locations.sort(self.dynamicSortMultiple("latitude", "longitude"));
 		callback(locations);
