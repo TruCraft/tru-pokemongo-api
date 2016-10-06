@@ -330,7 +330,7 @@ function PokemonGoAPI() {
 						self.playerInfo.apiEndpoint = api_endpoint;
 					}
 					// get initial heartbeat
-					self.Heartbeat({collect: options.collect}, function(err, res) {
+					self.Heartbeat(function(err, res) {
 						if(err) {
 							return callback(err);
 						} else {
@@ -439,11 +439,10 @@ function PokemonGoAPI() {
 
 	/**
 	 *
-	 * @param options
 	 * @param callback
 	 * @constructor
 	 */
-	self.Heartbeat = function(options, callback) {
+	self.Heartbeat = function(callback) {
 		// Generating walk data using s2 geometry
 		var walk = self.GetNeighbors(self.playerInfo.latitude, self.playerInfo.longitude).sort(function(a, b) {
 			return a > b;
@@ -467,9 +466,6 @@ function PokemonGoAPI() {
 			CHECK_AWARDED_BADGES: null,
 			DOWNLOAD_SETTINGS: "54b359c97e46900f87211ef6e6dd0b7f2a3ea1f5"
 		};
-		if(options.collect) {
-			requests.COLLECT_DAILY_DEFENDER_BONUS = null;
-		}
 
 		self.MakeCall(requests, function(err, responses) {
 			var ret = null;
@@ -568,6 +564,23 @@ function PokemonGoAPI() {
 			player_longitude: self.playerInfo.longitude,
 			pokemon_id: pokemon_id
 		};
+		self.MakeCall(request, function(err, responses) {
+			var ret = null;
+			if(responses != null) {
+				ret = responses[type];
+			}
+			callback(err, ret);
+		});
+	};
+
+	/**
+	 *
+	 * @param callback
+	 * @constructor
+	 */
+	self.CollectDailyDefenderBonus = function(callback) {
+		var type = "COLLECT_DAILY_DEFENDER_BONUS";
+		var request = {};
 		self.MakeCall(request, function(err, responses) {
 			var ret = null;
 			if(responses != null) {
@@ -807,14 +820,14 @@ function PokemonGoAPI() {
 	 * @param callback
 	 * @constructor
 	 */
-	self.CatchPokemon = function(mapPokemon, normalizedHitPosition, normalizedReticleSize, spinModifier, pokeball, callback) {
+	self.CatchPokemon = function(mapPokemon, hitPokemon, normalizedHitPosition, normalizedReticleSize, spinModifier, pokeball, callback) {
 		var type = "CATCH_POKEMON";
 		var request = {};
 		request[type] = {
 			encounter_id: mapPokemon.encounter_id,
 			pokeball: pokeball,
 			normalized_reticle_size: normalizedReticleSize,
-			hit_pokemon: true,
+			hit_pokemon: hitPokemon,
 			spin_modifier: spinModifier,
 			normalized_hit_position: normalizedHitPosition
 		};
