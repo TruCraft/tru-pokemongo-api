@@ -1014,6 +1014,44 @@ function PokemonGoAPI() {
 	};
 
 	/**
+	 * Get the prestige level of the gym
+	 *
+	 * @param gym
+	 * @param callback
+	 */
+	self.getGymeLevel = function(gym, callback) {
+		if(gym !== undefined && gym !== null) {
+			if(gym.gym_points !== undefined && gym.gym_points !== null) {
+				if(gym.gym_points >= 0 && gym.gym_points < 2000) {
+					callback(null, 1);
+				} else if(gym.gym_points >= 2000 && gym.gym_points < 4000) {
+					callback(null, 2);
+				} else if(gym.gym_points >= 4000 && gym.gym_points < 8000) {
+					callback(null, 3);
+				} else if(gym.gym_points >= 8000 && gym.gym_points < 12000) {
+					callback(null, 4);
+				} else if(gym.gym_points >= 12000 && gym.gym_points < 16000) {
+					callback(null, 5);
+				} else if(gym.gym_points >= 16000 && gym.gym_points < 20000) {
+					callback(null, 6);
+				} else if(gym.gym_points >= 20000 && gym.gym_points < 30000) {
+					callback(null, 7);
+				} else if(gym.gym_points >= 30000 && gym.gym_points < 40000) {
+					callback(null, 8);
+				} else if(gym.gym_points >= 40000 && gym.gym_points < 50000) {
+					callback(null, 9);
+				} else if(gym.gym_points >= 50000) {
+					callback(null, 10);
+				}
+			} else {
+				callback("gym_points is either undefined or null");
+			}
+		} else {
+			callback("gym is either undefined or null");
+		}
+	};
+
+	/**
 	 *
 	 * @param callback
 	 * @constructor
