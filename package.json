@@ -14,7 +14,7 @@
   },
   "devDependencies": {},
   "scripts": {
-    "postversion": "git push"
+    "postversion": "git push; npm publish"
   },
   "repository": {
     "type": "git",
