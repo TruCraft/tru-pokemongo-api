@@ -31,7 +31,6 @@ const Responses = POGOProtos.Networking.Responses;
 
 var _username;
 var _password;
-var error_count = 0;
 
 function PokemonGoAPI() {
 	var self = this;
@@ -390,20 +389,11 @@ function PokemonGoAPI() {
 				callback(err);
 			} else {
 				if(ret.api_url !== undefined && ret.api_url !== null && ret.api_url.length > 0) {
-					console.log(ret.api_url);
-					error_count = 0;
 					var api_endpoint = 'https://' + ret.api_url + '/rpc';
 					self.DebugPrint('[i] Received API Endpoint: ' + api_endpoint);
 					callback(null, api_endpoint);
 				} else {
-					error_count++;
-					if(error_count >= 10) {
-						callback("Failed to get an endpoint 10 times in a row");
-					} else {
-						setTimeout(function() {
-							self.GetApiEndpoint(callback);
-						}, 3000);
-					}
+					callback("Failed to get an endpoint 10 times in a row");
 				}
 			}
 		});
