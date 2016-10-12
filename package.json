@@ -18,7 +18,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/jacobtruman/tru-pokemongo-api.git"
+    "url": "git://github.com/TruCraft/tru-pokemongo-api.git"
   },
   "author": "Jacob Truman",
   "license": "BSD"
